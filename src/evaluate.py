@@ -134,7 +134,7 @@ def evaluate(
         dataset = load_dataset(os.path.join(dataset_dir, task), subject)
         labels, answers, all_outputs = [], [], []
         for epoch in range(n_avg):
-            pbar.set_postfix_str("{} Trial: {}".format(categorys[subject]["name"], epoch))
+            pbar.set_postfix_str(f'{categorys[subject]["name"]} Trial: {epoch}')
             inputs, outputs = [], []
             for i in trange(len(dataset[split]), desc="Formatting batches", position=1, leave=False):
                 support_set = dataset["train"].shuffle().select(range(min(n_shot, len(dataset["train"]))))
@@ -176,10 +176,10 @@ def evaluate(
 
     print(score_info)
     if save_name is not None:
-        with open(save_name + ".json", "w", encoding="utf-8", newline="\n") as f:
+        with open(f"{save_name}.json", "w", encoding="utf-8", newline="\n") as f:
             json.dump(results, f, indent=2)
 
-        with open(save_name + ".log", "w", encoding="utf-8", newline="\n") as f:
+        with open(f"{save_name}.log", "w", encoding="utf-8", newline="\n") as f:
             f.write(score_info)
 
 

@@ -55,7 +55,7 @@ class Runner:
         if not model_path:
             return ALERTS["err_no_path"][lang]
 
-        if len(dataset) == 0:
+        if not dataset:
             return ALERTS["err_no_dataset"][lang]
 
         self.aborted = False
@@ -67,10 +67,7 @@ class Runner:
         self.thread = None
         self.running = False
         torch_gc()
-        if self.aborted:
-            return ALERTS["info_aborted"][lang]
-        else:
-            return finish_info
+        return ALERTS["info_aborted"][lang] if self.aborted else finish_info
 
     def _parse_train_args(self, data: Dict[Component, Any]) -> Tuple[str, str, str, List[str], str, Dict[str, Any]]:
         get = lambda name: data[self.manager.get_elem(name)]
@@ -193,8 +190,7 @@ class Runner:
     def _preview(self, data: Dict[Component, Any], do_train: bool) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
         parse_func = self._parse_train_args if do_train else self._parse_eval_args
         lang, model_name, model_path, dataset, _, args = parse_func(data)
-        error = self._initialize(lang, model_name, model_path, dataset)
-        if error:
+        if error := self._initialize(lang, model_name, model_path, dataset):
             yield error, gr.update(visible=False)
         else:
             yield gen_cmd(args), gr.update(visible=False)
@@ -203,8 +199,7 @@ class Runner:
         parse_func = self._parse_train_args if do_train else self._parse_eval_args
         lang, model_name, model_path, dataset, output_dir, args = parse_func(data)
         self.data, self.do_train, self.monitor_inputs = data, do_train, dict(lang=lang, output_dir=output_dir)
-        error = self._initialize(lang, model_name, model_path, dataset)
-        if error:
+        if error := self._initialize(lang, model_name, model_path, dataset):
             yield error, gr.update(visible=False)
         else:
             self.running = True
@@ -235,14 +230,14 @@ class Runner:
                 yield self.logger_handler.log, update_process_bar(self.trainer_callback)
 
         if self.do_train:
-            if os.path.exists(os.path.join(output_dir, TRAINING_ARGS_NAME)):
-                finish_info = ALERTS["info_finished"][lang]
-            else:
-                finish_info = ALERTS["err_failed"][lang]
+            finish_info = (
+                ALERTS["info_finished"][lang]
+                if os.path.exists(os.path.join(output_dir, TRAINING_ARGS_NAME))
+                else ALERTS["err_failed"][lang]
+            )
+        elif os.path.exists(os.path.join(output_dir, "all_results.json")):
+            finish_info = get_eval_results(os.path.join(output_dir, "all_results.json"))
         else:
-            if os.path.exists(os.path.join(output_dir, "all_results.json")):
-                finish_info = get_eval_results(os.path.join(output_dir, "all_results.json"))
-            else:
-                finish_info = ALERTS["err_failed"][lang]
+            finish_info = ALERTS["err_failed"][lang]
 
         yield self._finalize(lang, finish_info), gr.update(visible=False)
